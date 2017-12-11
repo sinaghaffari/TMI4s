@@ -10,6 +10,7 @@ TMI4s is still in it's infancy but hosts a variety of features that make it's us
 
 ### Managing Rate Limits
 You never have to worry about rate limits again. You can send messages to TMI4s as fast as you'd like. It will queue up the messages you send and throttle them accordingly.
+
 It currently rate limits `PRIVMSG` and `JOIN` messages, but whispers will be added soon.
 
 ### Managing Disconnects and Minimizing Downtime
@@ -22,6 +23,7 @@ TMI4s can also be configured to join each channel twice and automatically filter
 ## Execution
 ### Dependencies
 Java: http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html
+
 SBT: http://www.scala-sbt.org/
 
 ### Running TMI4s
@@ -32,7 +34,9 @@ sbt run
 
 ## Configuration
 The configuration for TMI4s can be found in `/src/main/resources/application.conf`
+
 In here, you can override defaults that can be found in `/src/main/resources/tmi4s.conf`
+
 The config is structured like this:
 ```text
 tmi4s {
