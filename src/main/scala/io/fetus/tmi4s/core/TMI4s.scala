@@ -14,10 +14,14 @@ import io.fetus.tmi4s.models.irc.MessageContainer.{FromTwitch, ToTwitch}
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scalacache.Cache
+import scalacache.guava.GuavaCache
+import scalacache.modes.try_._
 
 class TMI4s(config: Config) extends Actor {
   val caps: mutable.Set[Capability] = mutable.Set.empty
   var pass: Option[Pass] = None
+
   override def receive: Receive = {
     case ToTwitch(cap: Capability) =>
       caps.add(cap)
@@ -40,10 +44,15 @@ class TMI4s(config: Config) extends Actor {
           auth
         )
       )
+      val selfMessageCache: mutable.ListBuffer[String] = mutable.ListBuffer.empty[String]
       context.become {
         case ToTwitch(join: Join) => channelDistributor ! ToTwitch(join)
         case ToTwitch(part: Part) => channelDistributor ! ToTwitch(part)
-        case ToTwitch(msg: PrivMsg) => messageConnection ! ToTwitch(msg)
+        case ToTwitch(msg: PrivMsg) =>
+          selfMessageCache.append(msg.message)
+          messageConnection ! ToTwitch(msg)
+        case FromTwitch(msg: PrivMsg) if selfMessageCache.contains(msg.message) =>
+          selfMessageCache -= msg.message
         case FromTwitch(msg: Message) => context.parent ! FromTwitch(msg)
       }
   }
