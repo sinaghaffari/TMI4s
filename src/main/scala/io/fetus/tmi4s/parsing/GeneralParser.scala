@@ -14,7 +14,7 @@ object GeneralParser {
     case "0" => false
     case "1" => true
   }
-  val word: P[String] = P((CharIn('a' to 'z') | "_" | "-").rep(1)).!.map(_.toString)
+  val word: P[String] = P((CharIn('a' to 'z') | "_" | "-" | digit).rep(1)).!.map(_.toString)
 
   val name: P[String] = P(CharsWhile(c => !(c == ':' || c == ';' || c == '@' || c == '!' || c == '.' || c == ' ' || c == '=')).!)
   val fakeName: P[Unit] = P(CharsWhile(c => !(c == ':' || c == ';' || c == '@' || c == '!' || c == '.' || c == ' ' || c == '=')))
