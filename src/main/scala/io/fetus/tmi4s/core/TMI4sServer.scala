@@ -17,14 +17,24 @@ class TMI4sServer(config: Config) extends Actor {
   implicit val materializer: ActorMaterializer = ActorMaterializer(ActorMaterializerSettings(context.system))
   implicit val ec: ExecutionContext = context.dispatcher
 
-  private val connections: Source[Tcp.IncomingConnection, Future[Tcp.ServerBinding]] = Tcp()(context.system).bind("0.0.0.0", 6667)
+  private val connections: Source[Tcp.IncomingConnection, Future[Tcp.ServerBinding]] = Tcp()(context.system).bind(
+    config.getString("tmi4s.listen-host"),
+    config.getInt("tmi4s.listen-port")
+  )
   private val handleConnection: Sink[IncomingConnection, Future[Done]] = Sink.foreach[IncomingConnection] { client =>
     import io.fetus.tmi4s.util.Flows._
     println(s"TMI4s Received Connection:")
     println(s"\tLocal Address: ${client.localAddress.getAddress.getCanonicalHostName}:${client.localAddress.getPort}")
-    println(s"\tRemote Address: ${client.remoteAddress.getAddress.getCanonicalHostName}:${client.remoteAddress.getPort}")
-    val connection: Flow[FromTwitch[Message], ToTwitch[SendableMessage], NotUsed] = messageToByteString.via(client.flow).via(byteStringToSendableMessage)
-    context.actorOf(TMI4sClient.props(config, connection, client.localAddress, client.remoteAddress), name = s"${client.remoteAddress.getAddress.getCanonicalHostName}:${client.remoteAddress.getPort}")
+    println(
+      s"\tRemote Address: ${client.remoteAddress.getAddress.getCanonicalHostName}:${client.remoteAddress.getPort}"
+    )
+    val connection: Flow[FromTwitch[Message], ToTwitch[SendableMessage], NotUsed] = messageToByteString
+      .via(client.flow)
+      .via(byteStringToSendableMessage)
+    context.actorOf(
+      TMI4sClient.props(config, connection, client.localAddress, client.remoteAddress),
+      name = s"${client.remoteAddress.getAddress.getCanonicalHostName}:${client.remoteAddress.getPort}"
+    )
   }
   val (server, done) = connections.toMat(handleConnection)(Keep.both).run()
 
