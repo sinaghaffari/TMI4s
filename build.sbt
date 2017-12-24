@@ -1,4 +1,5 @@
 name := "TMI4s"
+organization := "io.fetus"
 
 version := "0.1"
 
@@ -16,6 +17,4 @@ libraryDependencies += "com.google.inject" % "guice" % "4.1.0"
 libraryDependencies += "com.github.cb372" % "scalacache-guava_2.12" % "0.21.0"
 libraryDependencies += "com.github.cb372" % "scalacache-core_2.12" % "0.21.0"
 
-
 libraryDependencies += "com.lihaoyi" % "fastparse_2.12" % "1.0.0"
-        
