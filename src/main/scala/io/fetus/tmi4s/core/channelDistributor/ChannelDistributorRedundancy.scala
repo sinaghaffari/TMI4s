@@ -4,6 +4,7 @@ import akka.Done
 import akka.actor.{Actor, ActorRef, Props}
 import akka.stream._
 import akka.stream.scaladsl.{Broadcast, GraphDSL, Merge, MergePreferred, RunnableGraph, Sink, Source, SourceQueueWithComplete}
+import com.typesafe.config.Config
 import io.fetus.tmi4s.models.irc.Message.{Dedupable, Join, Part, SendableMessage}
 import io.fetus.tmi4s.models.irc.MessageContainer.{FromTwitch, ToTwitch}
 import io.fetus.tmi4s.models.irc.{Authenticate, Message}
@@ -19,13 +20,13 @@ import scalacache.modes.try_._
   *
   * @author Sina
   */
-class ChannelDistributorRedundancy(num: Int, per: FiniteDuration, auth: Authenticate) extends Actor {
+class ChannelDistributorRedundancy(num: Int, per: FiniteDuration, auth: Authenticate, config: Config) extends Actor {
   implicit val materializer: ActorMaterializer = ActorMaterializer(ActorMaterializerSettings(context.system))
   val leftCache: Cache[Dedupable] = GuavaCache[Dedupable]
   val rightCache: Cache[Dedupable] = GuavaCache[Dedupable]
 
-  val left: ActorRef = context.actorOf(ChannelDistributor.props(num, per, auth))
-  val right: ActorRef = context.actorOf(ChannelDistributor.props(num, per, auth))
+  val left: ActorRef = context.actorOf(ChannelDistributor.props(num, per, auth, config))
+  val right: ActorRef = context.actorOf(ChannelDistributor.props(num, per, auth, config))
 
   val (joins, parts, leftCompleted, rightCompleted) = {
     val joins: Source[ToTwitch[Join], SourceQueueWithComplete[ToTwitch[Join]]] = Source.queue[ToTwitch[Join]](100000, OverflowStrategy.backpressure)
@@ -83,5 +84,5 @@ class ChannelDistributorRedundancy(num: Int, per: FiniteDuration, auth: Authenti
 }
 
 object ChannelDistributorRedundancy {
-  def props(num: Int, per: FiniteDuration, auth: Authenticate): Props = Props(new ChannelDistributorRedundancy(num, per, auth))
+  def props(num: Int, per: FiniteDuration, auth: Authenticate, config: Config): Props = Props(new ChannelDistributorRedundancy(num, per, auth, config))
 }

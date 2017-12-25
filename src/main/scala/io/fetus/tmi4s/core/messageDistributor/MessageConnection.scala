@@ -4,6 +4,7 @@ import akka.actor.{Actor, Props}
 import akka.stream._
 import akka.stream.scaladsl.{Broadcast, Concat, GraphDSL, Merge, RunnableGraph, Sink, Source, SourceQueueWithComplete}
 import akka.{Done, NotUsed}
+import com.typesafe.config.Config
 import io.fetus.tmi4s.core.messageDistributor.MessageConnection.Disconnected
 import io.fetus.tmi4s.models.irc.Message.{Ping, PrivMsg, SendableMessage, UserState}
 import io.fetus.tmi4s.models.irc.MessageContainer.{FromTwitch, ToTwitch}
@@ -13,7 +14,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-class MessageConnection(num: Int, per: FiniteDuration, auth: Authenticate) extends Actor {
+class MessageConnection(num: Int, per: FiniteDuration, auth: Authenticate, config: Config) extends Actor {
   private implicit val materializer: ActorMaterializer = ActorMaterializer()(context.system)
   private implicit val ec: ExecutionContext = context.dispatcher
   private val (messages, connected, killSwitch, completed) = {
@@ -74,5 +75,5 @@ class MessageConnection(num: Int, per: FiniteDuration, auth: Authenticate) exten
 
 object MessageConnection {
   case class Disconnected(ex: Option[Throwable])
-  def props(num: Int, per: FiniteDuration, auth: Authenticate) = Props(new MessageConnection(num, per, auth))
+  def props(num: Int, per: FiniteDuration, auth: Authenticate, config: Config) = Props(new MessageConnection(num, per, auth, config))
 }

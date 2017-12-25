@@ -4,6 +4,7 @@ import akka.Done
 import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props, SupervisorStrategy}
 import akka.stream.scaladsl.{Sink, Source, SourceQueueWithComplete}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, OverflowStrategy, ThrottleMode}
+import com.typesafe.config.Config
 import io.fetus.tmi4s.models.irc.Message._
 import io.fetus.tmi4s.models.irc.MessageContainer.{FromTwitch, ToTwitch}
 import io.fetus.tmi4s.models.irc.{Authenticate, Message}
@@ -12,7 +13,7 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
-class ChannelDistributorManager(num: Int, per: FiniteDuration, redundant: Boolean, auth: Authenticate) extends Actor {
+class ChannelDistributorManager(num: Int, per: FiniteDuration, redundant: Boolean, auth: Authenticate, config: Config) extends Actor {
   override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
     case ex => SupervisorStrategy.Escalate
   }
@@ -21,7 +22,7 @@ class ChannelDistributorManager(num: Int, per: FiniteDuration, redundant: Boolea
   val channels = mutable.Set.empty[String]
   override def receive: Receive = {
     if (redundant) {
-      val distributor: ActorRef = context.actorOf(ChannelDistributorRedundancy.props(num, per, auth))
+      val distributor: ActorRef = context.actorOf(ChannelDistributorRedundancy.props(num, per, auth, config))
 
       {
         case ToTwitch(join: Join) =>
@@ -34,7 +35,7 @@ class ChannelDistributorManager(num: Int, per: FiniteDuration, redundant: Boolea
           context.parent ! FromTwitch(msg)
       }
     } else {
-      val distributor: ActorRef = context.actorOf(ChannelDistributor.props(num, per, auth))
+      val distributor: ActorRef = context.actorOf(ChannelDistributor.props(num, per, auth, config))
       val joinSource: Source[ToTwitch[Join], SourceQueueWithComplete[ToTwitch[Join]]] = Source.queue[ToTwitch[Join]](100000, OverflowStrategy.backpressure).throttle(num, per, num, ThrottleMode.shaping)
       val joinSink: Sink[ToTwitch[Join], Future[Done]] = Sink.foreach[ToTwitch[Join]](distributor ! _)
       val joins: SourceQueueWithComplete[ToTwitch[Join]] = joinSource.to(joinSink).run()
@@ -59,5 +60,5 @@ class ChannelDistributorManager(num: Int, per: FiniteDuration, redundant: Boolea
 }
 
 object ChannelDistributorManager {
-  def props(num: Int, per: FiniteDuration, redundant: Boolean, auth: Authenticate) = Props(new ChannelDistributorManager(num, per, redundant, auth))
+  def props(num: Int, per: FiniteDuration, redundant: Boolean, auth: Authenticate, config: Config) = Props(new ChannelDistributorManager(num, per, redundant, auth, config))
 }

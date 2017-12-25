@@ -34,14 +34,16 @@ class TMI4s(config: Config) extends Actor {
           config.getInt("tmi4s.twitch.irc.limits.joins.number"),
           config.getInt("tmi4s.twitch.irc.limits.joins.per").milliseconds,
           redundant = config.getBoolean("tmi4s.redundancy"),
-          auth
+          auth,
+          config
         )
       )
       val messageConnection = context.actorOf(
         MessageConnection.props(
           config.getInt("tmi4s.twitch.irc.limits.messages.number"),
           config.getInt("tmi4s.twitch.irc.limits.messages.per").milliseconds,
-          auth
+          auth,
+          config
         )
       )
       val selfMessageCache: mutable.ListBuffer[String] = mutable.ListBuffer.empty[String]

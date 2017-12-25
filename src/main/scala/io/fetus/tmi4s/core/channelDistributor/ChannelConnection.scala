@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.stream._
 import akka.stream.scaladsl.{Broadcast, Concat, GraphDSL, Merge, RunnableGraph, Sink, Source, SourceQueueWithComplete}
 import akka.{Done, NotUsed}
+import com.typesafe.config.Config
 import io.fetus.tmi4s.core.channelDistributor.ChannelConnection.Disconnected
 import io.fetus.tmi4s.models.irc.Message.{Join, Part, Ping, SendableMessage}
 import io.fetus.tmi4s.models.irc.MessageContainer.{FromTwitch, ToTwitch}
@@ -14,7 +15,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext}
 import scala.util.{Failure, Success}
 
-class ChannelConnection(num: Int, per: FiniteDuration, auth: Authenticate, parent: ActorRef, val name: String)(implicit private val system: ActorSystem, mat: Materializer, ec: ExecutionContext) {
+class ChannelConnection(num: Int, per: FiniteDuration, auth: Authenticate, parent: ActorRef, config: Config, val name: String)(implicit private val system: ActorSystem, mat: Materializer, ec: ExecutionContext) {
   private val _channels: mutable.Set[String] = mutable.Set.empty
   private val (joins, parts, connected, killSwitch, completed) = {
     import io.fetus.tmi4s.util.Flows._
@@ -23,7 +24,7 @@ class ChannelConnection(num: Int, per: FiniteDuration, auth: Authenticate, paren
     val parts: Source[ToTwitch[Part], SourceQueueWithComplete[ToTwitch[Part]]] = Source.queue[ToTwitch[Part]](100000, OverflowStrategy.backpressure)
     val responder = Sink.foreach[FromTwitch[Message]](parent ! _)
     val killSwitch: Graph[FlowShape[ToTwitch[SendableMessage], ToTwitch[SendableMessage]], UniqueKillSwitch] = KillSwitches.single[ToTwitch[SendableMessage]]
-    val graph = GraphDSL.create(joins, parts, tcp("irc.chat.twitch.tv", 6667), killSwitch, responder)((_, _, _, _, _)) { implicit builder => (joins, parts, connection, killSwitch, responder) =>
+    val graph = GraphDSL.create(joins, parts, tcp(config.getString("tmi4s.twitch.irc.host"), config.getInt("tmi4s.twitch.irc.port")), killSwitch, responder)((_, _, _, _, _)) { implicit builder => (joins, parts, connection, killSwitch, responder) =>
       import GraphDSL.Implicits._
 
       val messageCombiner = builder.add(Merge[ToTwitch[SendableMessage]](2))

@@ -2,6 +2,7 @@ package io.fetus.tmi4s.core.channelDistributor
 
 import akka.actor.{Actor, Props}
 import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
+import com.typesafe.config.Config
 import io.fetus.tmi4s.core.channelDistributor.ChannelConnection.Disconnected
 import io.fetus.tmi4s.models.irc.Message.{Join, Part}
 import io.fetus.tmi4s.models.irc.MessageContainer.{FromTwitch, ToTwitch}
@@ -16,7 +17,7 @@ import scala.concurrent.duration.FiniteDuration
   *
   * @author Sina
   */
-class ChannelDistributor(num: Int, per: FiniteDuration, auth: Authenticate) extends Actor {
+class ChannelDistributor(num: Int, per: FiniteDuration, auth: Authenticate, config: Config) extends Actor {
   implicit val ec: ExecutionContext = context.dispatcher
   implicit val materializer: ActorMaterializer = ActorMaterializer(ActorMaterializerSettings(context.system).withSupervisionStrategy(_ => Supervision.Restart))(context.system)
   val routees = mutable.Map.empty[String, ChannelConnection]
@@ -32,7 +33,7 @@ class ChannelDistributor(num: Int, per: FiniteDuration, auth: Authenticate) exte
     case ToTwitch(join: Join) =>
       // Find an available routee to send the message to. If none are available, create one.
       routees.find(_._2.hasRoom).fold {
-        val routee = new ChannelConnection(num, per, auth, self, nameIterator.next())(context.system, materializer, ec)
+        val routee = new ChannelConnection(num, per, auth, self, config, nameIterator.next())(context.system, materializer, ec)
         routees.put(routee.name, routee)
         channelToRoutee.put(join.channel, routee.name)
         routee.join(ToTwitch(join))
@@ -74,5 +75,5 @@ class ChannelDistributor(num: Int, per: FiniteDuration, auth: Authenticate) exte
 }
 
 object ChannelDistributor {
-  def props(num: Int, per: FiniteDuration, auth: Authenticate): Props = Props(new ChannelDistributor(num, per, auth))
+  def props(num: Int, per: FiniteDuration, auth: Authenticate, config: Config): Props = Props(new ChannelDistributor(num, per, auth, config))
 }
